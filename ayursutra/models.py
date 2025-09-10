@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 
 USER_ROLES = {
-    "Practitioner": "Practitioner",
+    "Doctor": "Doctor",
     "Patient": "Patient"
 }
 
@@ -13,6 +13,13 @@ PRIORITIES ={
     "Low": "Low"
 }
 
+def get_file_location(instance):
+
+    if instance.role == "Doctor":
+        return "doctors/"
+    
+    return "patients/"
+
 class User(AbstractUser):
 
     username = models.CharField(max_length=256, unique=False, null=True, blank=True)
@@ -21,6 +28,8 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=USER_ROLES)
     phone = models.CharField(max_length=15)
     email = models.EmailField(unique=True)
+    image = models.ImageField(upload_to=get_file_location, null=True)
+    dateOfBirth = models.DateField(null=True, blank=True)
     is_verified = models.BooleanField(default=False)
     
     USERNAME_FIELD = 'email'
@@ -28,25 +37,6 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
-
-class Patient(models.Model):
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    dateOfBirth = models.DateField(null=True, blank=True)
-
-    def __str__(self):
-        return self.user.firstName
-
-class Practitioner(models.Model):
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    image = models.ImageField(upload_to="practitioners/")
-    hospitalName = models.CharField(max_length=100)
-    experience = models.CharField(max_length=10)
-    image_verified = models.BooleanField(default=False)
-
-    def __str__(self):
-        return self.user.firstName
 
 class NotificationTypes(models.Model):
 
@@ -65,6 +55,30 @@ class UserNotifications(models.Model):
     priority = models.CharField(max_length=7, choices=PRIORITIES)
     datetime = models.DateTimeField(default=timezone.now)
     is_read = models.BooleanField(default=False)
+    _type = models.CharField(max_length=10, null=True)
 
     def __str__(self):
         return self.user.firstName
+    
+class DoctorProgram(models.Model):
+
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="programs")
+    title = models.CharField(max_length=100)
+    description = models.CharField(max_length=256)
+    total_phases = models.PositiveIntegerField(null=True)
+    total_sessions = models.PositiveIntegerField(null=True)
+
+    def __str__(self):
+
+        return f"{self.doctor.firstName} {self.doctor.lastName}: {self.title}"
+
+class ProgramPhase(models.Model):
+
+    program = models.ForeignKey(DoctorProgram, on_delete=models.CASCADE, related_name="phases")
+    title = models.CharField(max_length=100)
+    description = models.CharField(max_length=256)
+    total_sessions = models.PositiveIntegerField(null=True)
+
+    def __str__(self):
+
+        return self.program.title
